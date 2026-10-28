@@ -1,0 +1,29 @@
+# Secrets - never commit these
+.env
+.env.*
+!.env.example
+slskd.yml
+slskd-data/
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+
+# Tool output / local state (playlists, reports, downloads)
+data/
+output/
+downloads/
+*.mp3
+*.flac
+*.wav
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
