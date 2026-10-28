@@ -1,13 +1,9 @@
 import httpx
-from rich.console import Console
 
-from soulseek_auto_tool.download import choose_matches, playlist_folder_name, run_downloads
+from soulseek_auto_tool.download import playlist_folder_name, run_downloads
 from soulseek_auto_tool.models import Track
 from soulseek_auto_tool.slskd import SlskdClient
 from soulseek_auto_tool.state import Session
-
-QUIET = Console(quiet=True)
-
 
 def _match(user, name, **extra):
     return {"username": user, "filename": rf"music\{name}", "size": 1000, "extension": "mp3",
@@ -22,38 +18,12 @@ def _track(id, query, matches):
     return Track(id=id, raw_title=query, uploader="u", query=query, searched=True, matches=matches)
 
 
-def _scripted(answers):
-    it = iter(answers)
-    return lambda prompt: next(it)
-
-
 def test_playlist_folder_name_matches_finder_style_and_is_safe():
     assert playlist_folder_name("Acid/Hard Tech") == "Acid:Hard Tech"
     assert playlist_folder_name("../escape") == ":escape"  # cannot climb out of the library
     assert "/" not in playlist_folder_name("a/b/c")
     assert not playlist_folder_name(".secret").startswith(".")
     assert playlist_folder_name("   ") == "playlist"
-
-
-def test_choose_best_pick_skip_and_quit(tmp_path):
-    session = _session(tmp_path, [
-        _track("1", "one", [_match("a", "1.mp3"), _match("b", "1b.mp3")]),
-        _track("2", "two", [_match("a", "2.mp3"), _match("b", "2b.mp3")]),
-        _track("3", "three", [_match("a", "3.mp3")]),
-        _track("4", "four", [_match("a", "4.mp3")]),
-    ])
-    assert choose_matches(session, QUIET, _scripted(["", "2", "s", "q"])) is False
-    t = session.tracks
-    assert t[0].chosen["username"] == "a" and t[0].download_status == "chosen"
-    assert t[1].chosen["username"] == "b"
-    assert t[2].download_status == "skipped"
-    assert t[3].download_status == ""  # not decided yet, will be asked again on resume
-
-
-def test_out_of_range_number_falls_back_to_best(tmp_path):
-    session = _session(tmp_path, [_track("1", "one", [_match("a", "1.mp3")])])
-    choose_matches(session, QUIET, _scripted(["9"]))
-    assert session.tracks[0].chosen["username"] == "a"
 
 
 def _transfer_client(state_by_file, posted):

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Callable
 
 from rich.console import Console
+from rich.markup import escape
 
 from .parser import build_query
 from .state import Session
@@ -27,9 +28,9 @@ def review_tracks(
     total = len(session.tracks)
     for track in pending:
         position = session.tracks.index(track) + 1
-        console.print(f"\n[bold]{position}/{total}[/bold]  {track.raw_title}  [dim]by {track.uploader}[/dim]")
+        console.print(f"\n[bold]{position}/{total}[/bold]  {escape(track.raw_title)}  [dim]by {escape(track.uploader)}[/dim]")
         flag = "" if track.confidence >= 0.7 else "  [yellow](low confidence, check this one)[/yellow]"
-        console.print(f"   search: [cyan]{track.query}[/cyan]{flag}")
+        console.print(f"   search: [cyan]{escape(track.query)}[/cyan]{flag}")
 
         answer = input_fn("   > ").strip()
         lowered = answer.lower()

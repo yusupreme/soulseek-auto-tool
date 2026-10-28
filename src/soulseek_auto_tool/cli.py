@@ -7,13 +7,14 @@ from pathlib import Path
 from rich.console import Console
 
 from .config import load_settings
-from .download import choose_matches, playlist_folder_name, run_downloads
+from .choose import choose_matches
+from .download import playlist_folder_name, run_downloads
 from .pacer import Pacer
 from .parser import parse_tracks
 from .playlist import fetch_playlist
 from .report import write_report
 from .review import review_tracks
-from .search import run_searches
+from .search import run_searches, search_one
 from .slskd import SlskdClient, SlskdError
 from .state import Session, session_path
 
@@ -28,7 +29,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-ai", action="store_true", help="Skip Claude, use regex parsing only")
     parser.add_argument("--min-delay", type=float, default=3.0, help="Min seconds between searches")
     parser.add_argument("--max-delay", type=float, default=4.5, help="Max seconds between searches")
-    parser.add_argument("--download", action="store_true", help="After searching, pick matches and download them")
+    parser.add_argument("--search-only", action="store_true", help="Only search and write the report; skip choosing and downloading")
     parser.add_argument("--wait", type=float, default=10, help="Minutes to wait for downloads (default 10)")
     parser.add_argument("--library-dir", type=Path, help="Where playlist folders are saved (default: LIBRARY_DIR)")
     parser.add_argument("--data-dir", type=Path, default=Path("data"), help="Where progress is saved")
@@ -82,8 +83,9 @@ def main(argv: list[str] | None = None) -> int:
         md_path, _ = write_report(session, args.output_dir)
         console.print(f"\n[green]Searches done.[/green] Report: {md_path}")
 
-        if args.download:
-            if not choose_matches(session, console):
+        if not args.search_only:
+            console.print("\nNow review each track: compare SoundCloud with what Soulseek found.")
+            if not choose_matches(session, console, retry=lambda t: search_one(t, client, pacer)):
                 console.print("\nProgress saved. Run the same command again to continue.")
                 return 0
             folder = args.library_dir / playlist_folder_name(session.playlist_name)

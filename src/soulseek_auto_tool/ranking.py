@@ -5,6 +5,9 @@ import re
 # A file only counts as a match if this share of the search words appear in its path.
 MIN_NAME_MATCH = 0.7
 
+# How many matches to keep per track (the review screen shows them 5 at a time).
+RESULT_LIMIT = 20
+
 
 def _tokens(text: str) -> set[str]:
     return set(re.findall(r"\w+", text.lower()))
@@ -57,7 +60,7 @@ def score_file(file: dict, response: dict, query: str) -> tuple[tuple, dict] | N
     }
 
 
-def rank_responses(responses: list[dict], query: str, limit: int = 5) -> list[dict]:
+def rank_responses(responses: list[dict], query: str, limit: int = RESULT_LIMIT) -> list[dict]:
     """Return the best `limit` matches across all peer responses, best first."""
     scored: list[tuple[tuple, dict]] = []
     for response in responses:

@@ -9,6 +9,20 @@ from .slskd import SlskdClient
 from .state import Session
 
 
+def collect_results(track: Track, client: SlskdClient, search_id: str, search_timeout: float = 30) -> None:
+    """Wait for a started search to finish, then store its ranked matches on the track."""
+    client.wait_for_search(search_id, timeout=search_timeout)
+    track.matches = rank_responses(client.get_responses(search_id), track.query)
+    track.searched = True
+    client.delete_search(search_id)
+
+
+def search_one(track: Track, client: SlskdClient, pacer: Pacer, search_timeout: float = 30) -> None:
+    """Search a single track (used when the user edits a search term during review)."""
+    pacer.wait()
+    collect_results(track, client, client.start_search(track.query), search_timeout)
+
+
 def run_searches(
     session: Session,
     client: SlskdClient,
@@ -31,9 +45,5 @@ def run_searches(
             on_progress(index, len(todo), track)
 
     for track, search_id in started:
-        client.wait_for_search(search_id, timeout=search_timeout)
-        responses = client.get_responses(search_id)
-        track.matches = rank_responses(responses, track.query)
-        track.searched = True
-        client.delete_search(search_id)
+        collect_results(track, client, search_id, search_timeout)
         session.save()

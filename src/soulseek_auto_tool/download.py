@@ -7,12 +7,8 @@ import time
 from pathlib import Path
 from typing import Callable
 
-from rich.console import Console
-
 from .slskd import SlskdClient
 from .state import Session
-
-MAX_CHOICES = 5
 
 
 def playlist_folder_name(name: str) -> str:
@@ -23,48 +19,6 @@ def playlist_folder_name(name: str) -> str:
 
 def _basename(path: str) -> str:
     return re.split(r"[\\/]", path)[-1]
-
-
-def choose_matches(
-    session: Session, console: Console, input_fn: Callable[[str], str] = input
-) -> bool:
-    """Let the user pick which match to download for each searched track.
-
-    Returns True when every track has been decided, False if the user quit.
-    """
-    todo = [t for t in session.tracks if t.searched and t.matches and not t.download_status]
-    if not todo:
-        return True
-    console.print(
-        "\n[dim]Enter[/dim]=best match  [dim]1-5[/dim]=pick that one  [dim]s[/dim]=skip  "
-        "[dim]a[/dim]=best match for all remaining  [dim]q[/dim]=save & quit"
-    )
-    for track in todo:
-        console.print(f"\n[bold]{track.query}[/bold]")
-        for i, m in enumerate(track.matches[:MAX_CHOICES], start=1):
-            fmt = m["extension"] + (f" {m['bitrate']}k" if m.get("bitrate") else "")
-            slot = "free slot" if m["free_slot"] else f"queue {m['queue_length']}"
-            console.print(f"  {i}. {_basename(m['filename'])}  [dim]{fmt}, {m['username']}, {slot}[/dim]")
-        answer = input_fn("   > ").strip().lower()
-
-        if answer == "q":
-            session.save()
-            return False
-        if answer == "a":
-            for rest in todo:
-                if not rest.download_status:
-                    rest.chosen, rest.download_status = rest.matches[0], "chosen"
-            session.save()
-            return True
-        if answer == "s":
-            track.download_status = "skipped"
-        else:
-            index = int(answer) - 1 if answer.isdigit() else 0
-            if not 0 <= index < min(len(track.matches), MAX_CHOICES):
-                index = 0
-            track.chosen, track.download_status = track.matches[index], "chosen"
-        session.save()
-    return True
 
 
 def _find_download(downloads_dir: Path, remote_filename: str) -> Path | None:

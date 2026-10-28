@@ -87,17 +87,29 @@ Edit `.env`:
 slsk-auto "https://soundcloud.com/<user>/sets/<playlist>"
 ```
 
-Options: `--no-ai`, `--min-delay`, `--max-delay`, `--download`, `--wait`, `--library-dir`, `--data-dir`, `--output-dir`.
+Options: `--no-ai`, `--search-only`, `--min-delay`, `--max-delay`, `--wait`, `--library-dir`, `--data-dir`, `--output-dir`.
 
 Run the same command again to resume an interrupted session. The report is written to `output/`.
 
 **Private playlists:** use the playlist's **Share → private link** (including `on.soundcloud.com/...` short links).
 The secret in that link grants access, so treat it like a password and don't commit it.
 
-### Downloading
+### Choosing and downloading
 
-Add `--download` to also fetch files. After the searches finish you pick a match for each track (Enter takes the
-best one, `1`-`5` picks another, `s` skips). Finished files are moved into
+You decide every track. After all searches finish, each track gets a comparison card: the SoundCloud title and
+**track length** next to each Soulseek file's length, with the difference colored (green within 3 s, red beyond 10 s),
+plus file size, upload slot and the sharing user. Snippet/preview tracks get a note that a longer file is expected.
+
+| Key | Action |
+|---|---|
+| Enter | take file #1 (the largest 320 kbps MP3) |
+| number | pick that file (numbering continues across pages) |
+| `m` | show the next 5 results (up to 20 are kept) |
+| `e` | edit the search term and search again |
+| `s` | skip the track entirely |
+| `q` | save and quit; run the same command to continue |
+
+Use `--search-only` to skip this step and just get the report. After the review, downloads are queued and finished files are moved into
 `<LIBRARY_DIR>/<playlist name>/`, so each SoundCloud playlist gets its own folder. Existing files are never
 overwritten. If some downloads are still queued on other users' machines when `--wait` minutes run out, run the same
 command later and they are filed then.
