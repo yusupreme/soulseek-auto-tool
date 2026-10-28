@@ -93,6 +93,9 @@ def choose_matches(
 
     Returns True when every track has been decided, False if the user quit.
     """
+    for track in session.tracks:  # failed downloads get another chance
+        if track.download_status == "failed":
+            track.download_status, track.chosen = "", None
     todo = [t for t in session.tracks if t.searched and not t.download_status]
     if not todo:
         return True

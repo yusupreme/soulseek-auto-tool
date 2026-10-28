@@ -4,7 +4,7 @@ from rich.console import Console
 
 from soulseek_auto_tool.models import Track
 from soulseek_auto_tool.pacer import Pacer
-from soulseek_auto_tool.report import write_report
+from soulseek_auto_tool.report import write_log
 from soulseek_auto_tool.review import review_tracks
 from soulseek_auto_tool.search import run_searches
 from soulseek_auto_tool.slskd import SlskdClient, SlskdError
@@ -84,9 +84,10 @@ def test_run_searches_paces_ranks_saves_and_reports(tmp_path):
     assert session.tracks[0].searched and session.tracks[0].matches[0]["username"] == "peer"
     assert session.tracks[1].matches == []  # peer's file doesn't match this query
 
-    md, js = write_report(session, tmp_path / "out")
-    assert "peer" in md.read_text() and "No matches found." in md.read_text()
-    assert js.exists()
+    text = write_log(session, tmp_path / "out").read_text()
+    assert "## Found but not decided yet" in text and "## Not found" in text
+    assert "Totally Unrelated Words" in text
+    assert session.tracks[1].search_stats["peers"] == 1  # recorded, to explain the miss later
 
 
 def test_searched_tracks_are_not_searched_again(tmp_path):

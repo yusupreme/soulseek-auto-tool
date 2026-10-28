@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 from typing import Callable
 
+from .fileinfo import read_audio_info
 from .slskd import SlskdClient
 from .state import Session
 
@@ -40,6 +41,16 @@ def _move_into(src: Path, dest_dir: Path) -> Path:
         counter += 1
     shutil.move(str(src), str(target))
     return target
+
+
+def _prune_empty_dirs(directory: Path, stop: Path) -> None:
+    """Remove folders slskd left behind once their file has been moved out."""
+    while directory != stop and stop in directory.parents:
+        try:
+            directory.rmdir()  # only succeeds when the folder is empty
+        except OSError:
+            return
+        directory = directory.parent
 
 
 def run_downloads(
@@ -82,13 +93,18 @@ def run_downloads(
         for username in {t.chosen["username"] for t in pending}:
             states = {f["filename"]: f.get("state", "") for f in client.list_downloads(username)}
             for track in (t for t in pending if t.chosen["username"] == username):
-                if "Succeeded" not in states.get(track.chosen["filename"], ""):
-                    continue
-                source = _find_download(downloads_dir, track.chosen["filename"])
-                if source:
-                    track.saved_path = str(_move_into(source, dest))
-                    track.download_status = "done"
-                    on_event(f"Saved {Path(track.saved_path).name}")
+                state = states.get(track.chosen["filename"], "")
+                if "Succeeded" in state:
+                    source = _find_download(downloads_dir, track.chosen["filename"])
+                    if source:
+                        track.saved_path = str(_move_into(source, dest))
+                        track.file_info = read_audio_info(Path(track.saved_path))
+                        track.download_status = "done"
+                        _prune_empty_dirs(source.parent, downloads_dir)
+                        on_event(f"Saved {Path(track.saved_path).name}")
+                elif "Completed" in state:  # cancelled, rejected, timed out, errored...
+                    track.download_status, track.download_note = "failed", state
+                    on_event(f"Failed ({state}): {_basename(track.chosen['filename'])}")
         session.save()
         if waited >= wait or not any(t.download_status == "queued" for t in session.tracks):
             return

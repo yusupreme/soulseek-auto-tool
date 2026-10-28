@@ -114,6 +114,25 @@ Use `--search-only` to skip this step and just get the report. After the review,
 overwritten. If some downloads are still queued on other users' machines when `--wait` minutes run out, run the same
 command later and they are filed then.
 
+## The log
+
+Every run writes `output/<playlist name>/` with:
+
+- `log.md`: a summary table plus sections for **Downloaded**, **Still queued**, **Download failed**, **Not found**,
+  **Skipped by you** and **Not decided yet**.
+- `downloaded.csv`: one row per downloaded file, ready for a spreadsheet.
+- `tracks.json`: everything the tool knows about every track.
+
+For each downloaded file the tool reads the **real file** (not what the sender claimed) and records its length,
+bitrate and CBR/VBR mode, sample rate, channels, size and who it came from, next to the SoundCloud length. Anything
+worth a second look is flagged: a bitrate other than 320, VBR, a sample rate other than 44.1 kHz, a length more than
+10 s away from SoundCloud (except for snippets), or a sender who reported a different length than the real file has.
+
+For tracks that were **not found**, the log says why: nobody answered, or how many files came back and in which
+formats, and whether 320 kbps MP3s were seen but did not match the track name. Failed transfers list the reason.
+
+`--retry-empty` searches again for tracks that found nothing.
+
 ## Development
 
 ```bash

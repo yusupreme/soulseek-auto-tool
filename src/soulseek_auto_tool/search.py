@@ -5,7 +5,7 @@ from typing import Callable
 from .models import Track
 from .pacer import Pacer
 from .parser import simplified_query
-from .ranking import rank_responses
+from .ranking import rank_responses, summarize_responses
 from .slskd import SlskdClient
 from .state import Session
 
@@ -13,7 +13,9 @@ from .state import Session
 def collect_results(track: Track, client: SlskdClient, search_id: str, search_timeout: float = 30) -> None:
     """Wait for a started search to finish, then store its ranked matches on the track."""
     client.wait_for_search(search_id, timeout=search_timeout)
-    track.matches = rank_responses(client.get_responses(search_id), track.query)
+    responses = client.get_responses(search_id)
+    track.matches = rank_responses(responses, track.query)
+    track.search_stats = summarize_responses(responses, track.query)
     track.searched = True
     client.delete_search(search_id)
 

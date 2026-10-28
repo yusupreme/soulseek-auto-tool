@@ -18,8 +18,11 @@ class Track:
     searched: bool = False
     matches: list[dict] = field(default_factory=list)
     chosen: dict | None = None
-    download_status: str = ""  # "" | skipped | chosen | queued | done
+    download_status: str = ""  # "" | skipped | chosen | queued | done | failed
     saved_path: str = ""
+    download_note: str = ""  # why a download failed
+    file_info: dict = field(default_factory=dict)  # real properties of the saved file
+    search_stats: dict = field(default_factory=dict)  # what the last search returned
 
     def to_dict(self) -> dict:
         return asdict(self)

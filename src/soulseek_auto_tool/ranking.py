@@ -70,6 +70,34 @@ def score_file(file: dict, response: dict, query: str) -> tuple[tuple, dict] | N
     }
 
 
+def summarize_responses(responses: list[dict], query: str) -> dict:
+    """Describe what a search returned, to explain an empty result later."""
+    formats: dict[str, int] = {}
+    files = mp3_320_name_mismatch = 0
+    needed = _required_tokens(query)
+    for response in responses:
+        for file in response.get("files", []):
+            files += 1
+            filename = file.get("filename", "")
+            ext = (file.get("extension") or _extension(filename)).lower().lstrip(".")
+            if ext == "mp3":
+                bitrate = file.get("bitRate")
+                label = "mp3 320" if is_320_mp3(ext, bitrate) else "mp3 other"
+                if label == "mp3 320" and needed and len(needed & _tokens(filename)) / len(needed) < MIN_NAME_MATCH:
+                    mp3_320_name_mismatch += 1
+            elif ext in {"flac", "wav", "aiff", "aif", "m4a", "ogg", "opus", "aac", "alac", "wv"}:
+                label = ext
+            else:
+                continue  # images, playlists, nfo files...
+            formats[label] = formats.get(label, 0) + 1
+    return {
+        "peers": len(responses),
+        "files": files,
+        "formats": formats,
+        "mp3_320_name_mismatch": mp3_320_name_mismatch,
+    }
+
+
 def rank_responses(responses: list[dict], query: str, limit: int = RESULT_LIMIT) -> list[dict]:
     """Return the best `limit` matches across all peer responses, best first."""
     scored: list[tuple[tuple, dict]] = []

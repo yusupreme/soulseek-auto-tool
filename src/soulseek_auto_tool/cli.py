@@ -13,7 +13,7 @@ from .download import playlist_folder_name, run_downloads
 from .pacer import Pacer
 from .parser import parse_tracks
 from .playlist import fetch_playlist
-from .report import write_report
+from .report import write_log
 from .review import review_tracks
 from .search import run_searches, search_one
 from .slskd import SlskdClient, SlskdError
@@ -85,13 +85,14 @@ def main(argv: list[str] | None = None) -> int:
             on_progress=lambda i, n, t: console.print(f"[dim]{i}/{n}[/dim] searching: {escape(t.query)}"),
             on_fallback=lambda old, new: console.print(f"[dim]nothing for[/dim] {escape(old)}[dim], retrying as[/dim] {escape(new)}"),
         )
-        md_path, _ = write_report(session, args.output_dir)
-        console.print(f"\n[green]Searches done.[/green] Report: {md_path}")
+        log_path = write_log(session, args.output_dir)
+        console.print(f"\n[green]Searches done.[/green]")
 
         if not args.search_only:
             console.print("\nNow review each track: compare SoundCloud with what Soulseek found.")
             if not choose_matches(session, console, retry=lambda t: search_one(t, client, pacer)):
-                console.print("\nProgress saved. Run the same command again to continue.")
+                log_path = write_log(session, args.output_dir)
+                console.print(f"\nProgress saved. Run the same command again to continue.\nLog: {log_path}")
                 return 0
             folder = args.library_dir / playlist_folder_name(session.playlist_name)
             console.print(f"\nDownloading into: {folder}")
@@ -109,6 +110,8 @@ def main(argv: list[str] | None = None) -> int:
                     f"[yellow]{left} file(s) are still queued in slskd.[/yellow] "
                     "Run the same command later to file them."
                 )
+            log_path = write_log(session, args.output_dir)
+        console.print(f"\nLog (downloaded, not found, skipped, file details): [bold]{log_path}[/bold]")
     except SlskdError as exc:
         console.print(f"[red]{exc}[/red]")
         return 1
