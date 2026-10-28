@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 import uuid
 from typing import Callable
+from urllib.parse import quote
 
 import httpx
 
@@ -69,3 +70,12 @@ class SlskdClient:
 
     def delete_search(self, search_id: str) -> None:
         self._request("DELETE", f"/api/v0/searches/{search_id}")
+
+    def queue_download(self, username: str, files: list[dict]) -> None:
+        """Ask slskd to download files ({"filename", "size"}) from a peer."""
+        self._request("POST", f"/api/v0/transfers/downloads/{quote(username, safe='')}", json=files)
+
+    def list_downloads(self, username: str) -> list[dict]:
+        """All download transfers with one peer, flattened to a list of file dicts."""
+        data = self._request("GET", f"/api/v0/transfers/downloads/{quote(username, safe='')}").json()
+        return [f for d in data.get("directories", []) for f in d.get("files", [])]

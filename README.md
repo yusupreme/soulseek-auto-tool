@@ -4,7 +4,8 @@ A command-line tool that takes a public **SoundCloud playlist**, cleans up each 
 Soulseek-friendly search, lets you **accept or edit every search term**, and then searches them on
 **Soulseek** one at a time, 3 to 4.5 seconds apart, so you don't hammer the network.
 
-It produces a ranked Markdown report of the best matches for each track. It does not download anything.
+It produces a ranked Markdown report of the best matches for each track, and can optionally download your picks into
+a folder named after the playlist.
 
 ## How it works
 
@@ -56,7 +57,12 @@ web:
       soulseek_auto_tool:
         key: pick-a-long-random-string
         role: readwrite
+shares:
+  directories:
+    - /path/to/your/music   # many Soulseek users won't share with accounts that share nothing
 ```
+
+Sharing is per account: slskd does not inherit the shares of another Soulseek client, so point it at your music folder.
 
 ### 3. Configure the tool
 
@@ -80,9 +86,20 @@ Edit `.env`:
 slsk-auto "https://soundcloud.com/<user>/sets/<playlist>"
 ```
 
-Options: `--no-ai`, `--min-delay`, `--max-delay`, `--data-dir`, `--output-dir`.
+Options: `--no-ai`, `--min-delay`, `--max-delay`, `--download`, `--wait`, `--library-dir`, `--data-dir`, `--output-dir`.
 
 Run the same command again to resume an interrupted session. The report is written to `output/`.
+
+**Private playlists:** use the playlist's **Share → private link** (including `on.soundcloud.com/...` short links).
+The secret in that link grants access, so treat it like a password and don't commit it.
+
+### Downloading
+
+Add `--download` to also fetch files. After the searches finish you pick a match for each track (Enter takes the
+best one, `1`-`5` picks another, `s` skips). Finished files are moved into
+`<LIBRARY_DIR>/<playlist name>/`, so each SoundCloud playlist gets its own folder. Existing files are never
+overwritten. If some downloads are still queued on other users' machines when `--wait` minutes run out, run the same
+command later and they are filed then.
 
 ## Development
 
@@ -95,13 +112,13 @@ and run in CI on every push.
 
 ## Roadmap
 
-- Optional auto-download of the top match through slskd
+- Fully automatic downloads (no pick step) for high-confidence matches
 - Multiple playlists with de-duplication
 - Local web UI for the review step
 
 ## Disclaimer
 
-This tool only searches. Make sure that whatever you download is something you have the right to obtain, and follow
+Make sure that whatever you download is something you have the right to obtain, and follow
 the terms of SoundCloud, Soulseek and your local laws. Use the pacing defaults to stay a good citizen on the network.
 
 ## License

@@ -7,6 +7,7 @@ from pathlib import Path
 from rich.console import Console
 
 from .config import load_settings
+from .download import choose_matches, playlist_folder_name, run_downloads
 from .pacer import Pacer
 from .parser import parse_tracks
 from .playlist import fetch_playlist
@@ -27,6 +28,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-ai", action="store_true", help="Skip Claude, use regex parsing only")
     parser.add_argument("--min-delay", type=float, default=3.0, help="Min seconds between searches")
     parser.add_argument("--max-delay", type=float, default=4.5, help="Max seconds between searches")
+    parser.add_argument("--download", action="store_true", help="After searching, pick matches and download them")
+    parser.add_argument("--wait", type=float, default=10, help="Minutes to wait for downloads (default 10)")
+    parser.add_argument("--library-dir", type=Path, help="Where playlist folders are saved (default: LIBRARY_DIR)")
     parser.add_argument("--data-dir", type=Path, default=Path("data"), help="Where progress is saved")
     parser.add_argument("--output-dir", type=Path, default=Path("output"), help="Where reports go")
     return parser
@@ -36,6 +40,7 @@ def main(argv: list[str] | None = None) -> int:
     args = build_arg_parser().parse_args(argv)
     console = Console()
     settings = load_settings()
+    args.library_dir = (args.library_dir or settings.library_dir).expanduser()
 
     if not settings.slskd_api_key:
         console.print("[red]SLSKD_API_KEY is not set.[/red] Copy .env.example to .env and fill it in.")
@@ -74,6 +79,29 @@ def main(argv: list[str] | None = None) -> int:
             pacer,
             on_progress=lambda i, n, t: console.print(f"[dim]{i}/{n}[/dim] searching: {t.query}"),
         )
+        md_path, _ = write_report(session, args.output_dir)
+        console.print(f"\n[green]Searches done.[/green] Report: {md_path}")
+
+        if args.download:
+            if not choose_matches(session, console):
+                console.print("\nProgress saved. Run the same command again to continue.")
+                return 0
+            folder = args.library_dir / playlist_folder_name(session.playlist_name)
+            console.print(f"\nDownloading into: {folder}")
+            run_downloads(
+                session,
+                client,
+                settings.slskd_downloads_dir,
+                args.library_dir,
+                wait=args.wait * 60,
+                on_event=lambda message: console.print(f"  {message}"),
+            )
+            left = sum(1 for t in session.tracks if t.download_status == "queued")
+            if left:
+                console.print(
+                    f"[yellow]{left} file(s) are still queued in slskd.[/yellow] "
+                    "Run the same command later to file them."
+                )
     except SlskdError as exc:
         console.print(f"[red]{exc}[/red]")
         return 1
@@ -83,9 +111,6 @@ def main(argv: list[str] | None = None) -> int:
         return 130
     finally:
         client.close()
-
-    md_path, json_path = write_report(session, args.output_dir)
-    console.print(f"\n[green]Done.[/green] Report: {md_path}")
     return 0
 
 

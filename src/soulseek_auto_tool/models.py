@@ -17,6 +17,9 @@ class Track:
     status: str = "pending"  # pending | accepted | skipped
     searched: bool = False
     matches: list[dict] = field(default_factory=list)
+    chosen: dict | None = None
+    download_status: str = ""  # "" | skipped | chosen | queued | done
+    saved_path: str = ""
 
     def to_dict(self) -> dict:
         return asdict(self)
