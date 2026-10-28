@@ -138,6 +138,7 @@ def write_log(session: Session, out_dir: Path) -> Path:
         f"| Downloaded | {count('downloaded')} |",
         f"| Still queued | {count('queued')} |",
         f"| Download failed | {count('failed')} |",
+        f"| Files rejected after download | {sum(len(t.rejected) for t in session.tracks)} |",
         f"| Not found (no 320 kbps MP3 match) | {count('not_found')} |",
         f"| Skipped by you (had matches) | {count('skipped')} |",
         f"| Skipped at the search-term step | {count('skipped_terms')} |",
@@ -192,6 +193,16 @@ def write_log(session: Session, out_dir: Path) -> Path:
     section("Skipped at the search-term step", "skipped_terms", lambda t: [])
     section("Found but not decided yet", "undecided", lambda t: [f"searched: {t.query}", f"{len(t.matches)} matches available"])
     section("Not searched yet", "not_searched", lambda t: [f"search term: {t.query}"])
+
+    rejected = [(n, t) for n, t in enumerate(session.tracks, start=1) if t.rejected]
+    if rejected:
+        lines += ["## Rejected after download (not a genuine 320 kbps CBR MP3)", ""]
+        for number, track in rejected:
+            lines.append(f"- **{number}. {_md_cell(track.raw_title)}**")
+            for item in track.rejected:
+                name = re.split(r"[\\/]", item["filename"])[-1]
+                lines.append(f"  - {name} from {item['username']}: {item['reason']} (file deleted)")
+        lines.append("")
 
     md_path = folder / "log.md"
     md_path.write_text("\n".join(lines))

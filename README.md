@@ -121,12 +121,20 @@ Use `--search-only` to skip this step and just get the report. After the review,
 overwritten. If some downloads are still queued on other users' machines when `--wait` minutes run out, run the same
 command later and they are filed then.
 
+### Checking the real file
+
+Soulseek only tells the tool the bitrate the sender *claims*. After each download the tool reads the actual file, and
+if it is not a genuine 320 kbps CBR MP3 (real bitrate outside 319-321 kbps, or VBR/ABR encoding), it **deletes the
+file**, drops it from the matches and tries the next match that passes the auto-select rules. If there is no safe
+replacement, the track is left for you to decide on the next run. Files whose properties cannot be read are kept and
+flagged, because the tool can't judge them. Every rejection is listed in the log.
+
 ## The log
 
 Every run writes `output/<playlist name>/` with:
 
 - `log.md`: a summary table plus sections for **Downloaded**, **Still queued**, **Download failed**, **Not found**,
-  **Skipped by you** and **Not decided yet**.
+  **Rejected after download**, **Skipped by you** and **Not decided yet**.
 - `downloaded.csv`: one row per downloaded file, ready for a spreadsheet.
 - `tracks.json`: everything the tool knows about every track.
 

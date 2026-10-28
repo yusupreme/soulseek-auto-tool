@@ -36,3 +36,18 @@ def read_audio_info(path: Path) -> dict:
         if value:
             info[f"tag_{key}"] = str(value[0])
     return info
+
+
+def quality_problem(info: dict) -> str | None:
+    """Why a downloaded file is not a genuine 320 kbps CBR MP3, or None if it is (or cannot be judged).
+
+    A file whose properties could not be read is not judged here; the log flags it instead.
+    """
+    if info.get("error"):
+        return None
+    kbps, mode = info.get("bitrate_kbps"), info.get("bitrate_mode")
+    if kbps is not None and not 319 <= kbps <= 321:
+        return f"real bitrate is {kbps} kbps"
+    if mode in ("VBR", "ABR"):
+        return f"{mode} encoding ({kbps} kbps average)" if kbps else f"{mode} encoding"
+    return None

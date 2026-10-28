@@ -7,7 +7,8 @@ import time
 from pathlib import Path
 from typing import Callable
 
-from .fileinfo import read_audio_info
+from .autopick import auto_pick
+from .fileinfo import quality_problem, read_audio_info
 from .slskd import SlskdClient
 from .state import Session
 
@@ -71,19 +72,38 @@ def run_downloads(
     """
     dest = library_dir / playlist_folder_name(session.playlist_name)
 
-    by_user: dict[str, list] = {}
-    for track in session.tracks:
-        if track.download_status == "chosen" and track.chosen:
-            by_user.setdefault(track.chosen["username"], []).append(track)
-    for username, tracks in by_user.items():
-        client.queue_download(
-            username,
-            [{"filename": t.chosen["filename"], "size": t.chosen.get("size") or 0} for t in tracks],
-        )
-        for t in tracks:
-            t.download_status = "queued"
-        on_event(f"Queued {len(tracks)} file(s) from {username}")
-    session.save()
+    def queue_chosen() -> None:
+        by_user: dict[str, list] = {}
+        for track in session.tracks:
+            if track.download_status == "chosen" and track.chosen:
+                by_user.setdefault(track.chosen["username"], []).append(track)
+        for username, tracks in by_user.items():
+            client.queue_download(
+                username,
+                [{"filename": t.chosen["filename"], "size": t.chosen.get("size") or 0} for t in tracks],
+            )
+            for t in tracks:
+                t.download_status = "queued"
+            on_event(f"Queued {len(tracks)} file(s) from {username}")
+        session.save()
+
+    def reject(track, source: Path, reason: str) -> None:
+        """Delete a download that is not a real 320 kbps CBR MP3 and move on to the next safe match."""
+        bad = track.chosen
+        name = _basename(bad["filename"])
+        source.unlink(missing_ok=True)
+        _prune_empty_dirs(source.parent, downloads_dir)
+        track.rejected.append({"username": bad["username"], "filename": bad["filename"], "reason": reason})
+        track.matches = [m for m in track.matches if (m["username"], m["filename"]) != (bad["username"], bad["filename"])]
+        nxt = auto_pick(track)
+        if nxt:
+            track.chosen, track.download_status = nxt, "chosen"
+            on_event(f"Rejected {name} ({reason}); trying {_basename(nxt['filename'])} from {nxt['username']}")
+        else:
+            track.download_status, track.download_note = "failed", f"rejected: {reason}"
+            on_event(f"Rejected {name} ({reason}); no other safe match, left for you")
+
+    queue_chosen()
 
     waited = 0.0
     while True:
@@ -97,15 +117,20 @@ def run_downloads(
                 if "Succeeded" in state:
                     source = _find_download(downloads_dir, track.chosen["filename"])
                     if source:
+                        info = read_audio_info(source)
+                        problem = quality_problem(info)
+                        if problem:
+                            reject(track, source, problem)
+                            continue
                         track.saved_path = str(_move_into(source, dest))
-                        track.file_info = read_audio_info(Path(track.saved_path))
+                        track.file_info = info
                         track.download_status = "done"
                         _prune_empty_dirs(source.parent, downloads_dir)
                         on_event(f"Saved {Path(track.saved_path).name}")
                 elif "Completed" in state:  # cancelled, rejected, timed out, errored...
                     track.download_status, track.download_note = "failed", state
                     on_event(f"Failed ({state}): {_basename(track.chosen['filename'])}")
-        session.save()
+        queue_chosen()  # files that replaced a rejected one
         if waited >= wait or not any(t.download_status == "queued" for t in session.tracks):
             return
         sleep(poll)

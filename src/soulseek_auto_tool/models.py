@@ -23,6 +23,7 @@ class Track:
     saved_path: str = ""
     download_note: str = ""  # why a download failed
     file_info: dict = field(default_factory=dict)  # real properties of the saved file
+    rejected: list[dict] = field(default_factory=list)  # downloaded files deleted for not being 320 kbps CBR
     search_stats: dict = field(default_factory=dict)  # what the last search returned
 
     def to_dict(self) -> dict:
