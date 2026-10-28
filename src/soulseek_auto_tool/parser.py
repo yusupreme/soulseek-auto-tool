@@ -20,8 +20,11 @@ _GROUP = re.compile(r"[\[(]([^\[\]()]*)[\])]")
 _EMOJI = re.compile(
     "[\U0001F300-\U0001FAFF\U00002600-\U000027BF\U0001F000-\U0001F2FF️‍]+"
 )
-_SEPARATOR = re.compile(r"\s+[-–—]\s+")
+_FILE_EXT = re.compile(r"\.(mp3|wav|flac|aiff?|m4a|ogg|aac)$", re.IGNORECASE)
+_SEPARATOR =re.compile(r"\s+[-–—]\s+")
 _TRAILING_PROMO = re.compile(r"\b(free\s*(dl|download)|out now)\b.*$", re.IGNORECASE)
+_PREVIEW_TAG = re.compile(r"[\s\-–—]*\b(snippets?|preview)\b\s*$", re.IGNORECASE)
+_VINYL_SIDE = re.compile(r"^[A-D]\d{1,2}\.?\s+(?=\S)")  # "B1 Title", "A2. Title"
 
 
 @dataclass
@@ -39,9 +42,11 @@ def _is_junk(group_text: str) -> bool:
 
 def clean_title(raw: str) -> str:
     """Strip emojis and promo tags like [FREE DL] while keeping (Remix) info."""
-    text = _EMOJI.sub("", raw)
+    text = _FILE_EXT.sub("", _EMOJI.sub("", raw.strip()))
     text = _GROUP.sub(lambda m: "" if _is_junk(m.group(1)) else m.group(0), text)
     text = _TRAILING_PROMO.sub("", text)
+    text = _PREVIEW_TAG.sub("", text)
+    text = _VINYL_SIDE.sub("", text)
     return re.sub(r"\s+", " ", text).strip(" -–—|•")
 
 

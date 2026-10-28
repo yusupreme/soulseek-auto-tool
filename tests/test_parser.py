@@ -18,6 +18,11 @@ from soulseek_auto_tool.parser import (
         ("Artist - Track (Club Remix)", "Artist - Track (Club Remix)"),
         ("Artist - Track [Premiere]", "Artist - Track"),
         ("  Artist - Track   OUT NOW  ", "Artist - Track"),
+        ("Cari Lekebusch - Rockcarver.aiff", "Cari Lekebusch - Rockcarver"),
+        ("Artist - Track.WAV", "Artist - Track"),
+        ("B2. Blame The Mono - Funfair  SNIPPET", "Blame The Mono - Funfair"),
+        ("Setaoc Mass - Silent Tension - SNIPPET", "Setaoc Mass - Silent Tension"),
+        ("A1 Passed Out on the Sofa", "Passed Out on the Sofa"),
     ],
 )
 def test_clean_title(raw, expected):
