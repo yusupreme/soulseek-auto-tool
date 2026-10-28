@@ -54,7 +54,7 @@ def _slskd_transport(log):
         if request.method == "GET" and path.endswith("/responses"):
             return httpx.Response(200, json=[{
                 "username": "peer", "hasFreeUploadSlot": True, "queueLength": 0, "uploadSpeed": 1_000_000,
-                "files": [{"filename": r"m\Artist - Song 0.flac", "size": 1000}],
+                "files": [{"filename": r"m\Artist - Song 0.mp3", "size": 1000, "bitRate": 320}],
             }])
         if request.method == "GET" and path.startswith("/api/v0/searches/"):
             return httpx.Response(200, json={"state": "Completed, ResponseLimitReached"})

@@ -21,8 +21,9 @@ SoundCloud playlist ──yt-dlp──▶ track titles ──Claude (or regex)�
    Low-confidence guesses are flagged.
 4. **Search**: queries go to [slskd](https://github.com/slskd/slskd) (a Soulseek client with a REST API) with a
    random 3 to 4.5 second gap between them.
-5. **Rank**: results are scored on format and bitrate, free upload slot, queue length, speed, filename match, and
-   duration match against the SoundCloud track.
+5. **Rank**: only **320 kbps MP3s** whose file names match the search are kept (FLAC, lower bitrates and files with an
+   unknown bitrate are ignored). They are sorted by **largest file size**; a free upload slot and a short queue only
+   break ties. The rules live in `src/soulseek_auto_tool/ranking.py`.
 
 Progress is saved after every step, so you can stop and resume any time.
 

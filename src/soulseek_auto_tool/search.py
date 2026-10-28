@@ -33,7 +33,7 @@ def run_searches(
     for track, search_id in started:
         client.wait_for_search(search_id, timeout=search_timeout)
         responses = client.get_responses(search_id)
-        track.matches = rank_responses(responses, track.query, track.duration)
+        track.matches = rank_responses(responses, track.query)
         track.searched = True
         client.delete_search(search_id)
         session.save()

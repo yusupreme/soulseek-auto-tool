@@ -3,6 +3,8 @@ import pytest
 from soulseek_auto_tool.pacer import Pacer
 from soulseek_auto_tool.ranking import rank_responses
 
+QUERY = "Daft Punk One More Time"
+
 
 def _response(username, files, free=True, queue=0, speed=1_000_000):
     return {
@@ -14,35 +16,68 @@ def _response(username, files, free=True, queue=0, speed=1_000_000):
     }
 
 
-def test_flac_with_free_slot_beats_low_bitrate_mp3():
+def _file(name="Daft Punk - One More Time", ext="mp3", bitrate=320, size=10_000_000):
+    return {"filename": rf"m\{name}.{ext}", "bitRate": bitrate, "size": size}
+
+
+def _users(ranked):
+    return [m["username"] for m in ranked]
+
+
+def test_only_320_mp3s_are_returned_even_if_other_files_are_much_bigger():
     responses = [
-        _response("mp3guy", [{"filename": r"m\Daft Punk - One More Time.mp3", "bitRate": 128}], free=False, queue=20),
-        _response("flacguy", [{"filename": r"m\Daft Punk - One More Time.flac", "size": 30_000_000}]),
+        _response("flac", [_file(ext="flac", bitrate=None, size=40_000_000)]),
+        _response("mp3_256", [_file(bitrate=256, size=50_000_000)]),
+        _response("vbr_v0", [_file(bitrate=245, size=60_000_000)]),
+        _response("unknown_rate", [_file(bitrate=None, size=70_000_000)]),
+        _response("wav", [_file(ext="wav", bitrate=None, size=90_000_000)]),
+        _response("mp3_320", [_file(bitrate=320, size=9_000_000)]),
     ]
-    ranked = rank_responses(responses, "Daft Punk One More Time")
-    assert ranked[0]["username"] == "flacguy"
+    assert _users(rank_responses(responses, QUERY)) == ["mp3_320"]
+
+
+def test_no_320_mp3_means_no_matches():
+    responses = [_response("a", [_file(bitrate=256), _file(ext="flac", bitrate=None)])]
+    assert rank_responses(responses, QUERY) == []
+
+
+def test_among_320_mp3s_the_largest_file_wins():
+    responses = [
+        _response("small", [_file(size=8_000_000)]),
+        _response("large", [_file(size=14_000_000)]),
+        _response("medium", [_file(size=11_000_000)]),
+    ]
+    assert _users(rank_responses(responses, QUERY)) == ["large", "medium", "small"]
+
+
+def test_free_slot_and_queue_only_break_size_ties():
+    responses = [
+        _response("busy", [_file(size=10)], free=False, queue=30),
+        _response("free", [_file(size=10)], free=True, queue=0),
+        _response("bigger_but_busy", [_file(size=11)], free=False, queue=30),
+    ]
+    assert _users(rank_responses(responses, QUERY)) == ["bigger_but_busy", "free", "busy"]
+
+
+def test_a_huge_file_that_does_not_match_the_search_is_ignored():
+    responses = [
+        _response("wrong", [_file(name="Daft Punk - Harder Better Faster", size=90_000_000)]),
+        _response("right", [_file(size=10_000_000)]),
+    ]
+    assert _users(rank_responses(responses, QUERY)) == ["right"]
 
 
 def test_non_audio_and_unrelated_files_are_dropped():
     responses = [
-        _response("a", [{"filename": r"x\One More Time.jpg"}]),
-        _response("b", [{"filename": r"x\Completely Different Song.mp3", "bitRate": 320}]),
+        _response("a", [{"filename": r"x\One More Time.jpg", "size": 5}]),
+        _response("b", [_file(name="Completely Different Song")]),
     ]
-    assert rank_responses(responses, "Daft Punk One More Time") == []
-
-
-def test_duration_match_boosts_score():
-    files = lambda length: [{"filename": "Daft Punk - One More Time.mp3", "bitRate": 320, "length": length}]
-    close = rank_responses([_response("a", files(320))], "Daft Punk One More Time", duration=321)
-    far = rank_responses([_response("a", files(120))], "Daft Punk One More Time", duration=321)
-    assert close[0]["score"] > far[0]["score"]
+    assert rank_responses(responses, QUERY) == []
 
 
 def test_limit_is_respected():
-    responses = [
-        _response(f"u{i}", [{"filename": "A - B.mp3", "bitRate": 320}]) for i in range(10)
-    ]
-    assert len(rank_responses(responses, "A B", limit=3)) == 3
+    responses = [_response(f"u{i}", [_file(size=i)]) for i in range(10)]
+    assert len(rank_responses(responses, QUERY, limit=3)) == 3
 
 
 def test_pacer_waits_between_calls_but_not_before_the_first():
