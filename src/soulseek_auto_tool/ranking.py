@@ -10,7 +10,17 @@ RESULT_LIMIT = 20
 
 
 def _tokens(text: str) -> set[str]:
-    return set(re.findall(r"\w+", text.lower()))
+    # [^\W_]+ splits on underscores too, so "tribe_vibes" becomes "tribe" and "vibes".
+    return set(re.findall(r"[^\W_]+", text.lower()))
+
+
+# Words that rarely appear in file names, so they don't count against a match.
+OPTIONAL_WORDS = {"original", "mix"}
+
+
+def _required_tokens(query: str) -> set[str]:
+    tokens = _tokens(query)
+    return (tokens - OPTIONAL_WORDS) or tokens
 
 
 def _basename(path: str) -> str:
@@ -34,7 +44,7 @@ def score_file(file: dict, response: dict, query: str) -> tuple[tuple, dict] | N
     if not is_320_mp3(ext, bitrate):
         return None
 
-    query_tokens = _tokens(query)
+    query_tokens = _required_tokens(query)
     if not query_tokens:
         return None
     overlap = len(query_tokens & _tokens(filename)) / len(query_tokens)

@@ -4,6 +4,7 @@ from typing import Callable
 
 from .models import Track
 from .pacer import Pacer
+from .parser import simplified_query
 from .ranking import rank_responses
 from .slskd import SlskdClient
 from .state import Session
@@ -29,6 +30,7 @@ def run_searches(
     pacer: Pacer,
     on_progress: Callable[[int, int, Track], None] | None = None,
     search_timeout: float = 30,
+    on_fallback: Callable[[str, str], None] | None = None,
 ) -> None:
     """Search every accepted, not-yet-searched track, one every few seconds.
 
@@ -46,4 +48,17 @@ def run_searches(
 
     for track, search_id in started:
         collect_results(track, client, search_id, search_timeout)
+        session.save()
+
+    # Second chance: tracks with no matches get one more search without remix/version words.
+    for track, _ in started:
+        fallback = simplified_query(track.artist, track.title)
+        if track.matches or not fallback or fallback == track.query:
+            continue
+        original = track.query
+        track.query = fallback
+        track.searched = False
+        if on_fallback:
+            on_fallback(original, fallback)
+        search_one(track, client, pacer, search_timeout)
         session.save()

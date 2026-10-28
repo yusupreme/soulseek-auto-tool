@@ -71,6 +71,15 @@ def build_query(artist: str, title: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+_BRACKETED = re.compile(r"[\[(][^\[\]()]*[\])]")
+
+
+def simplified_query(artist: str, title: str) -> str:
+    """Artist + title without (remix/version) info, for a second try when nothing matched."""
+    base = _BRACKETED.sub(" ", title)
+    return build_query(artist, base)
+
+
 def apply_regex_parse(tracks: list[Track]) -> None:
     for track in tracks:
         parsed = parse_title(track.raw_title, track.uploader)

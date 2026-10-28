@@ -34,6 +34,20 @@ class Session:
         tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False))
         os.replace(tmp, self.path)  # atomic: never leaves a half-written file
 
+    def reset_empty(self) -> int:
+        """Make tracks that found nothing (and weren't downloaded) searchable again.
+
+        Returns how many were reset. Tracks with matches or finished downloads are untouched.
+        """
+        count = 0
+        for track in self.tracks:
+            if track.searched and not track.matches and track.download_status in ("", "skipped"):
+                track.searched, track.download_status, track.chosen = False, "", None
+                count += 1
+        if count:
+            self.save()
+        return count
+
     @classmethod
     def load(cls, path: Path) -> "Session":
         data = json.loads(path.read_text())

@@ -51,6 +51,14 @@ def test_build_query_strips_punctuation_that_breaks_soulseek_search():
     assert build_query("Beyoncé", "Don’t Stop") == "Beyoncé Don't Stop"
 
 
+def test_simplified_query_drops_remix_and_version_info():
+    from soulseek_auto_tool.parser import simplified_query
+
+    assert simplified_query("Ben Sims", "Manipulated (Adam Beyer Remix)") == "Ben Sims Manipulated"
+    assert simplified_query("A", "B [Phase] (Dub Mix)") == "A B"
+    assert simplified_query("A", "B") == "A B"
+
+
 def test_apply_regex_parse_sets_query():
     tracks = [Track(id="1", raw_title="A - B", uploader="u")]
     apply_regex_parse(tracks)

@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 from rich.console import Console
+from rich.markup import escape
 
 from .config import load_settings
 from .choose import choose_matches
@@ -27,6 +28,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("playlist_url", help="Public SoundCloud playlist URL")
     parser.add_argument("--no-ai", action="store_true", help="Skip Claude, use regex parsing only")
+    parser.add_argument("--retry-empty", action="store_true", help="Search again for saved tracks that found no matches")
     parser.add_argument("--min-delay", type=float, default=3.0, help="Min seconds between searches")
     parser.add_argument("--max-delay", type=float, default=4.5, help="Max seconds between searches")
     parser.add_argument("--search-only", action="store_true", help="Only search and write the report; skip choosing and downloading")
@@ -57,7 +59,9 @@ def main(argv: list[str] | None = None) -> int:
     path = session_path(args.data_dir, args.playlist_url)
     if path.exists():
         session = Session.load(path)
-        console.print(f"Resuming saved session: [bold]{session.playlist_name}[/bold]")
+        console.print(f"Resuming saved session: [bold]{escape(session.playlist_name)}[/bold]")
+        if args.retry_empty:
+            console.print(f"Searching again for {session.reset_empty()} track(s) that found nothing.")
     else:
         console.print("Fetching playlist...")
         name, tracks = fetch_playlist(args.playlist_url)
@@ -78,7 +82,8 @@ def main(argv: list[str] | None = None) -> int:
             session,
             client,
             pacer,
-            on_progress=lambda i, n, t: console.print(f"[dim]{i}/{n}[/dim] searching: {t.query}"),
+            on_progress=lambda i, n, t: console.print(f"[dim]{i}/{n}[/dim] searching: {escape(t.query)}"),
+            on_fallback=lambda old, new: console.print(f"[dim]nothing for[/dim] {escape(old)}[dim], retrying as[/dim] {escape(new)}"),
         )
         md_path, _ = write_report(session, args.output_dir)
         console.print(f"\n[green]Searches done.[/green] Report: {md_path}")

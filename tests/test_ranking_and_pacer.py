@@ -75,6 +75,20 @@ def test_non_audio_and_unrelated_files_are_dropped():
     assert rank_responses(responses, QUERY) == []
 
 
+def test_underscores_in_file_names_count_as_word_breaks():
+    responses = [_response("a", [{"filename": r"x\mark_broom-tribe_vibes-(bmd034).mp3", "bitRate": 320, "size": 5}])]
+    assert _users(rank_responses(responses, "Mark Broom Tribe Vibes")) == ["a"]
+
+
+def test_original_mix_words_are_optional_but_remixer_names_are_not():
+    responses = [
+        _response("plain", [_file(name="Renato Cohen - Pontape")]),
+        _response("wrong_remix", [_file(name="Renato Cohen - Pontape (Other Guy Rmx)")]),
+    ]
+    assert "plain" in _users(rank_responses(responses, "Renato Cohen Pontape Original Mix"))
+    assert _users(rank_responses(responses, "Renato Cohen Pontape Other Guy Remix")) == ["wrong_remix"]
+
+
 def test_limit_is_respected():
     responses = [_response(f"u{i}", [_file(size=i)]) for i in range(10)]
     assert len(rank_responses(responses, QUERY, limit=3)) == 3

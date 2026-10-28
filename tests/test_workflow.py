@@ -69,6 +69,7 @@ def test_run_searches_paces_ranks_saves_and_reports(tmp_path):
     session = _session(tmp_path, count=2)
     for t in session.tracks:
         t.status = "accepted"
+    session.tracks[1].artist, session.tracks[1].title = "Totally", "Unrelated Words"
     session.tracks[1].query = "Totally Unrelated Words"
     log, slept = [], []
     client = SlskdClient("http://slskd", "key", transport=_slskd_transport(log), sleep=lambda s: None)
@@ -102,3 +103,32 @@ def test_bad_api_key_gives_a_clear_error():
     client = SlskdClient("http://slskd", "wrong", transport=transport)
     with pytest.raises(SlskdError, match="API key"):
         client.check()
+
+
+def test_track_with_no_matches_is_retried_without_remix_words(tmp_path):
+    track = Track(id="1", raw_title="x", uploader="u", artist="Artist", title="Song 0 (Some Remix)",
+                  query="Artist Song 0 Some Remix", status="accepted")
+    session = Session(path=tmp_path / "s.json", playlist_url="u", playlist_name="Mix", tracks=[track])
+    log, retried = [], []
+    client = SlskdClient("http://slskd", "key", transport=_slskd_transport(log), sleep=lambda s: None)
+
+    run_searches(session, client, Pacer(0, 0), on_fallback=lambda old, new: retried.append((old, new)))
+
+    assert retried == [("Artist Song 0 Some Remix", "Artist Song 0")]
+    assert track.query == "Artist Song 0" and track.matches[0]["username"] == "peer"
+    assert sum(1 for m, p in log if m == "POST") == 2  # original search + one retry
+
+
+def test_reset_empty_only_touches_tracks_that_found_nothing(tmp_path):
+    session = _session(tmp_path, count=4)
+    empty, skipped_empty, has_matches, downloaded = session.tracks
+    for t in session.tracks:
+        t.searched = True
+    skipped_empty.download_status = "skipped"
+    has_matches.matches = [{"username": "peer"}]
+    downloaded.download_status, downloaded.chosen = "done", {"username": "peer"}
+
+    assert session.reset_empty() == 2
+    assert not empty.searched and not skipped_empty.searched and skipped_empty.download_status == ""
+    assert has_matches.searched and downloaded.download_status == "done"
+    assert Session.load(session.path).tracks[0].searched is False
