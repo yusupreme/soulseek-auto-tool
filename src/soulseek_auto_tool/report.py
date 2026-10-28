@@ -16,7 +16,7 @@ LENGTH_WARN_SECONDS = 10
 CSV_COLUMNS = [
     "number", "soundcloud_title", "soundcloud_uploader", "soundcloud_length_s", "saved_file", "actual_length_s",
     "length_difference_s", "actual_bitrate_kbps", "bitrate_mode", "sample_rate_hz", "channels", "size_mb",
-    "from_user", "remote_path", "reported_bitrate_kbps", "flags",
+    "from_user", "remote_path", "reported_bitrate_kbps", "picked_by", "flags",
 ]
 
 
@@ -113,6 +113,7 @@ def _downloaded_row(number: int, track: Track) -> dict:
         "from_user": chosen.get("username", ""),
         "remote_path": chosen.get("filename", ""),
         "reported_bitrate_kbps": chosen.get("bitrate") or "",
+        "picked_by": track.picked_by or "you",
         "flags": "; ".join(file_flags(track)),
     }
 
@@ -149,8 +150,8 @@ def write_log(session: Session, out_dir: Path) -> Path:
     lines += ["## Downloaded", ""]
     if rows:
         lines += [
-            "| # | SoundCloud track | SC length | File length | Diff | Bitrate | Mode | Sample rate | Size | From | Flags |",
-            "|---|---|---|---|---|---|---|---|---|---|---|",
+            "| # | SoundCloud track | SC length | File length | Diff | Bitrate | Mode | Sample rate | Size | From | Picked | Flags |",
+            "|---|---|---|---|---|---|---|---|---|---|---|---|",
         ]
         for (_, track), row in zip(groups["downloaded"], rows):
             info = track.file_info
@@ -160,7 +161,7 @@ def write_log(session: Session, out_dir: Path) -> Path:
                 f"| {fmt_time(info.get('length'))} | {diff_text or '-'} "
                 f"| {info.get('bitrate_kbps') or '?'} kbps | {info.get('bitrate_mode') or '?'} "
                 f"| {info.get('sample_rate') or '?'} Hz | {row['size_mb'] or '?'} MB "
-                f"| {_md_cell(row['from_user'])} | {_md_cell(row['flags']) or 'ok'} |"
+                f"| {_md_cell(row['from_user'])} | {row['picked_by']} | {_md_cell(row['flags']) or 'ok'} |"
             )
         lines += ["", "Saved files:", ""] + [f"- {Path(t.saved_path).name}" for _, t in groups["downloaded"]]
     else:

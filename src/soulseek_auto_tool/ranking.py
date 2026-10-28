@@ -23,6 +23,12 @@ def _required_tokens(query: str) -> set[str]:
     return (tokens - OPTIONAL_WORDS) or tokens
 
 
+def name_overlap(filename: str, query: str) -> float:
+    """Share of the query's words that appear in the file's path (1.0 = all of them)."""
+    needed = _required_tokens(query)
+    return len(needed & _tokens(filename)) / len(needed) if needed else 0.0
+
+
 def _basename(path: str) -> str:
     return re.split(r"[\\/]", path)[-1]
 

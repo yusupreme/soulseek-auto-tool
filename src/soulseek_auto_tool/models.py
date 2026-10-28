@@ -18,6 +18,7 @@ class Track:
     searched: bool = False
     matches: list[dict] = field(default_factory=list)
     chosen: dict | None = None
+    picked_by: str = ""  # "auto" | "user"
     download_status: str = ""  # "" | skipped | chosen | queued | done | failed
     saved_path: str = ""
     download_note: str = ""  # why a download failed

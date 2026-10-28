@@ -7,6 +7,7 @@ from pathlib import Path
 from rich.console import Console
 from rich.markup import escape
 
+from .autopick import AUTO_TOLERANCE, auto_select
 from .config import load_settings
 from .choose import choose_matches
 from .download import playlist_folder_name, run_downloads
@@ -32,6 +33,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--min-delay", type=float, default=3.0, help="Min seconds between searches")
     parser.add_argument("--max-delay", type=float, default=4.5, help="Max seconds between searches")
     parser.add_argument("--search-only", action="store_true", help="Only search and write the report; skip choosing and downloading")
+    parser.add_argument("--no-auto", action="store_true", help="Don't auto-select high-probability matches; review every track")
+    parser.add_argument("--auto-tolerance", type=float, default=AUTO_TOLERANCE, help="Seconds a file's length may differ from SoundCloud to be auto-selected (default 3)")
     parser.add_argument("--wait", type=float, default=10, help="Minutes to wait for downloads (default 10)")
     parser.add_argument("--library-dir", type=Path, help="Where playlist folders are saved (default: LIBRARY_DIR)")
     parser.add_argument("--data-dir", type=Path, default=Path("data"), help="Where progress is saved")
@@ -89,7 +92,10 @@ def main(argv: list[str] | None = None) -> int:
         console.print(f"\n[green]Searches done.[/green]")
 
         if not args.search_only:
-            console.print("\nNow review each track: compare SoundCloud with what Soulseek found.")
+            if not args.no_auto:
+                console.print("\nAuto-selecting high-probability matches (same name, same length, no remix/edit/live version)...")
+                auto_select(session, console, args.auto_tolerance)
+            console.print("\nNow review the rest: compare SoundCloud with what Soulseek found.")
             if not choose_matches(session, console, retry=lambda t: search_one(t, client, pacer)):
                 log_path = write_log(session, args.output_dir)
                 console.print(f"\nProgress saved. Run the same command again to continue.\nLog: {log_path}")

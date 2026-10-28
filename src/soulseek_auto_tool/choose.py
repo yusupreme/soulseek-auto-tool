@@ -144,7 +144,7 @@ def choose_matches(
                 console.print("   [dim]Pick one of the numbers shown.[/dim]")
                 continue
 
-            track.chosen, track.download_status = track.matches[index], "chosen"
+            track.chosen, track.download_status, track.picked_by = track.matches[index], "chosen", "user"
             break
         session.save()
     return True

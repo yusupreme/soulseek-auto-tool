@@ -87,7 +87,7 @@ Edit `.env`:
 slsk-auto "https://soundcloud.com/<user>/sets/<playlist>"
 ```
 
-Options: `--no-ai`, `--search-only`, `--min-delay`, `--max-delay`, `--wait`, `--library-dir`, `--data-dir`, `--output-dir`.
+Options: `--no-ai`, `--no-auto`, `--auto-tolerance`, `--search-only`, `--retry-empty`, `--min-delay`, `--max-delay`, `--wait`, `--library-dir`, `--data-dir`, `--output-dir`.
 
 Run the same command again to resume an interrupted session. The report is written to `output/`.
 
@@ -96,7 +96,14 @@ The secret in that link grants access, so treat it like a password and don't com
 
 ### Choosing and downloading
 
-You decide every track. After all searches finish, each track gets a comparison card: the SoundCloud title and
+**Auto-select.** Before you are asked anything, the tool picks the obvious ones itself. A file is taken automatically
+only when all of these hold: every word of the search is in the file name, the file has no version word (remix, edit,
+dub, live, extended...) that the SoundCloud title lacks, and its real length is within 3 seconds of the SoundCloud track
+(`--auto-tolerance` changes this). Of the files that pass, the largest wins. Snippets and tracks with an unknown length
+are never auto-picked. Each auto-pick is printed as it is made and marked `auto` in the log. Use `--no-auto` to
+review every track yourself.
+
+Everything else is decided by you. Each remaining track gets a comparison card: the SoundCloud title and
 **track length** next to each Soulseek file's length, with the difference colored (green within 3 s, red beyond 10 s),
 plus file size, upload slot and the sharing user. Snippet/preview tracks get a note that a longer file is expected.
 
@@ -139,12 +146,11 @@ formats, and whether 320 kbps MP3s were seen but did not match the track name. F
 pytest
 ```
 
-Tests cover title parsing, ranking, request pacing, the review prompt, and the slskd client (against a mocked API),
+Tests cover title parsing, ranking, auto-select, request pacing, the review prompt, and the slskd client (against a mocked API),
 and run in CI on every push.
 
 ## Roadmap
 
-- Fully automatic downloads (no pick step) for high-confidence matches
 - Multiple playlists with de-duplication
 - Local web UI for the review step
 
