@@ -32,7 +32,7 @@ You need Python 3.10+ and a running slskd instance.
 ### 1. Install the tool
 
 ```bash
-git clone https://github.com/<your-username>/soulseek-auto-tool.git
+git clone https://github.com/yusupreme/soulseek-auto-tool.git
 cd soulseek-auto-tool
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
