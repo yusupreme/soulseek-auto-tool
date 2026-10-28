@@ -115,7 +115,10 @@ _SYSTEM = (
     "You clean up SoundCloud track metadata so tracks can be searched on Soulseek. "
     "For each track, return the real artist and the track title. Remove promo noise "
     "(FREE DL, emojis, 'Premiere', etc.) but keep remix/edit/version info in the title. "
-    "The uploader is often NOT the artist (labels, reposts, DJs). Never invent names: "
+    "The artist is the ORIGINAL artist, never the remixer: for 'Title (X Remix)' the artist is "
+    "not X, and X stays in the title. When the title has no artist in it, the uploader is "
+    "usually the artist, unless it looks like a label, promo account or repost channel. "
+    "Strip vinyl side labels (A1, B2), catalog numbers and 'snippet'/'preview' tags. Never invent names: "
     "if you cannot tell, use what the title and uploader show and give a low confidence."
 )
 
@@ -148,7 +151,8 @@ def ai_parse(tracks: list[Track], api_key: str, model: str = AI_MODEL) -> int:
                 if not track or not item.get("title"):
                     continue
                 conf = max(0.0, min(1.0, float(item.get("confidence", 0.5))))
-                _apply(track, str(item.get("artist", "")).strip(), item["title"].strip(), conf)
+                title = clean_title(item["title"]) or item["title"].strip()  # belt and braces
+                _apply(track, str(item.get("artist", "")).strip(), title, conf)
                 updated += 1
     return updated
 

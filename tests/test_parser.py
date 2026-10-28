@@ -63,6 +63,32 @@ def test_parse_tracks_without_key_uses_regex():
     assert tracks[0].query == "A B"
 
 
+def test_ai_parse_applies_results_and_cleans_leftover_promo_tags(monkeypatch):
+    from types import SimpleNamespace
+
+    from soulseek_auto_tool.parser import ai_parse
+
+    reply = {"tracks": [
+        {"id": "1", "artist": "Exilles", "title": "XY SNIPPET", "confidence": 0.7},
+        {"id": "2", "artist": "Thomas P. Heckmann", "title": "Dunkel (Phase Fatale Remix)", "confidence": 1.7},
+        {"id": "unknown", "artist": "Nobody", "title": "Ignored", "confidence": 1},
+    ]}
+
+    class FakeClient:
+        def __init__(self, api_key):
+            self.messages = SimpleNamespace(
+                create=lambda **kw: SimpleNamespace(content=[SimpleNamespace(type="tool_use", input=reply)])
+            )
+
+    monkeypatch.setattr("anthropic.Anthropic", FakeClient)
+    tracks = [Track(id="1", raw_title="x", uploader="u"), Track(id="2", raw_title="y", uploader="u")]
+
+    assert ai_parse(tracks, api_key="fake") == 2
+    assert tracks[0].query == "Exilles XY"  # SNIPPET stripped
+    assert tracks[1].query == "Thomas P Heckmann Dunkel Phase Fatale Remix"  # remix info kept
+    assert tracks[1].confidence == 1.0  # clamped to 0..1
+
+
 def test_parse_tracks_falls_back_to_regex_when_ai_fails(monkeypatch):
     def boom(*args, **kwargs):
         raise RuntimeError("network down")
